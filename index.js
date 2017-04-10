@@ -293,7 +293,10 @@ class AbstractEntity {
   constructor(type, xx, yy){
     this.type = type;
     var sz = TILE_SIZE;
-    if(this.type == 0)sz = TILE_SIZE/2;
+    if(this.type == 0){
+        sz = TILE_SIZE/2;
+        //GAME.player = this;
+    }
     this.post = { x: xx, y : yy };
     this.vel = { h: 0, v : 0 };
     this.msk = new Mask(xx, yy, sz, sz);
@@ -303,6 +306,8 @@ class AbstractEntity {
     this.hface = 1;
     this.onground = false;
     this.onwall = false;
+    this.onwallB = false;
+    this.cling = false;
     // Player
     this.stamina_max = 6;
     this.stamina = this.stamina_max;
@@ -335,6 +340,15 @@ class AbstractEntity {
     if(this.onwall){
       weight = 0.1;
       if(this.vel.v < 0)this.vel.v = 0;
+    }
+    if(this.cling){
+      weight = 0;
+      if(!this.onwall){
+        // Underneath
+        this.vel.v = -2;
+      }else{
+        this.vel.v = 0;
+      }
     }
     this.vel.v += weight;
     if(this.vel.v >= 8)this.vel.v = 8;
@@ -408,9 +422,12 @@ class AbstractEntity {
     var ny = this.post.y + (this.vel.v*this.spd);
     this.msk.update(nx, ny);
     var hs = this.vel.h*this.spd;
-    var vs = this.vel.h*this.spd;
+    var vs = this.vel.v*this.spd;
+    var forceh = 0, forcev = 0;
     this.onground = false;
+    this.onwallB = false;
     this.onwall = false;
+    this.cling = false;
     // COLLISION CHECK
     var grid = GAME.INSTANCES;
     var gridw = grid.length;
@@ -418,8 +435,11 @@ class AbstractEntity {
       var inst = grid[i];
       if(inst != NONE){
         var type = inst.type;
+        // Collision
         switch(type){
           case 1: // Wall
+          case 2: // StickyWall
+          case 3: // BouncyWall
             var ix = inst.post.x, iy = inst.post.y;
             var disx = Math.abs(ix - this.post.x);
             var dirx = sign(ix - this.post.x);
@@ -435,11 +455,23 @@ class AbstractEntity {
                 this.msk.update(ox, oy);
                 this.vel.v = 0;
                 vs = 0;
+                switch(type){
+                  case 3: // BOUNCYWALL
+                    forcev = (vs*-1.1);
+                    break;
+                }
                 if(diry == 1){
                   this.onground = true;
                   // Player hits top side of
                   this.post.y = -1+inst.side_u-this.msk.hlfh;
                 }else{
+                  this.onwallB = true;
+                  switch(type){
+                    case 2: // STICKYWALL
+                      this.cling = true;
+                      this.stamina_charge();
+                      break;
+                  }
                   // Player hits bottom side of
                   this.post.y = 1+inst.side_d+this.msk.hlfh;
                 }
@@ -454,6 +486,15 @@ class AbstractEntity {
                 this.vel.h = 0;
                 hs = 0;
                 this.onwall = true;
+                switch(type){
+                  case 2: // STICKYWALL
+                    this.cling = true;
+                    this.stamina_charge();
+                    break;
+                  case 3: // BOUNCYWALL
+                    forceh = (hs*-1.1);
+                    break;
+                }
                 if(dirx == 1){
                   
                   // Player hits left side of
@@ -474,8 +515,12 @@ class AbstractEntity {
     }
     
     // Update Position
+    // add force to velocity
     this.post.x += this.vel.h*this.spd;
     this.post.y += this.vel.v*this.spd;
+    // Force
+    //this.post.x += forceh;
+    //this.post.y += forcev;
     this.boundcheck();
     this.msk.update(this.post.x, this.post.y);
   }
@@ -520,6 +565,28 @@ class Wall extends AbstractEntity {
   }
 }
 
+class StickyWall extends AbstractEntity {
+  constructor(xx, yy){
+    super(2, xx, yy);
+    this.color = "#6A1B9A";
+  }
+
+  update(){
+    // DO NOTHING
+  }
+}
+
+class BouncyWall extends AbstractEntity {
+  constructor(xx, yy){
+    super(3, xx, yy);
+    this.color = "#FFC400";
+  }
+
+  update(){
+    // DO NOTHING
+  }
+}
+
 /*
 GAME STATES:
 0 - INITIALIZATION
@@ -539,13 +606,13 @@ var GAME = {
   " X      XXXXXX",
   " X      X     ",
   " X      X     ",
-  " XXXX   X     ",
+  " XXXO   =     ",
   " X     XX     ",
   " XXX   XX     ",
-  " XXXX XXXX XXX",
-  " XXXX XXX  XXX",
-  " XXXX     XXXX",
-  " XXXXXXXXXXXXX",
+  " XXXX XXX= XXX",
+  " XXXX X==  XXX",
+  " XXXX     OXXX",
+  " XXXXOXXXXXXXX",
   ],
   player: new AbstractEntity(0, 656, 32),
   render: function(){
@@ -607,7 +674,10 @@ function level_load(plan){
       var type = NONE;
       var spot = plan[i].substring(j, j+1);
       switch(spot){
-        case "X": type = 0; break; // WALL
+        case "@": type = 0; break; // PLAYER
+        case "X": type = 1; break; // WALL
+        case "=": type = 2; break; // STICKYWALL
+        case "O": type = 3; break; // BOUNCYWALL
       }
       if(type != NONE){
         //alert("made a wall:"+i+", "+j);
@@ -623,7 +693,11 @@ function level_load(plan){
 
 function instance_create(type, xx, yy){
   switch(type){
-    case 0: return new Wall(xx, yy);
+    case 0: return new AbstractEntity(0, xx, yy);
+    case 1: return new Wall(xx, yy);
+    case 2: return new StickyWall(xx, yy);
+    case 3: return new BouncyWall(xx, yy);
+    
   }
   return undefined;
 }
@@ -743,3 +817,15 @@ drawImage(imageObj);
 
 // first resize
 resize();
+
+
+
+
+/*
+  TODO:
+  - New Entity Types [
+    X- StickyWall (Recharges Stamina, Prevents Sliding)
+    - BouncyWall (Bounces Player)
+  ]
+*/
+
