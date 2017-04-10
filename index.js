@@ -1,9 +1,9 @@
 /*
 Armando Campos
-3/20/17
+3/20/17 - 4/10/17
 */
 // Constants
-const NONE = -1, TILE_SIZE = 128;
+const NONE = -1, TILE_SIZE = 64;
 
 var container = document.getElementById('container');
 var canvas = document.getElementById('canvas');
@@ -288,6 +288,23 @@ class Mask {
   }
 }
 
+// Camera
+class Camera {
+  constructor(Entity){
+    this.follow = Entity;
+    this.x = 0;
+    this.y = 0;
+  }
+
+  update(){
+    if(this.follow != NONE){
+      // Follow Abstract Entity
+      this.x = this.follow.x;
+      this.y = this.follow.y;
+    }
+  }
+}
+
 // Entity Classes
 class AbstractEntity {
   constructor(type, xx, yy){
@@ -421,8 +438,8 @@ class AbstractEntity {
     var nx = this.post.x + (this.vel.h*this.spd);
     var ny = this.post.y + (this.vel.v*this.spd);
     this.msk.update(nx, ny);
-    var hs = this.vel.h*this.spd;
-    var vs = this.vel.v*this.spd;
+    var hs = this.vel.h;
+    var vs = this.vel.v;
     var forceh = 0, forcev = 0;
     this.onground = false;
     this.onwallB = false;
@@ -440,6 +457,7 @@ class AbstractEntity {
           case 1: // Wall
           case 2: // StickyWall
           case 3: // BouncyWall
+          case 4: // SpeedWall
             var ix = inst.post.x, iy = inst.post.y;
             var disx = Math.abs(ix - this.post.x);
             var dirx = sign(ix - this.post.x);
@@ -454,14 +472,19 @@ class AbstractEntity {
               if(this.place_meeting(inst)){
                 this.msk.update(ox, oy);
                 this.vel.v = 0;
-                vs = 0;
                 switch(type){
                   case 3: // BOUNCYWALL
-                    forcev = (vs*-1.1);
+                    forcev = (vs*-1.5);
                     break;
                 }
+                vs = 0;
                 if(diry == 1){
                   this.onground = true;
+                  switch(type){
+                    case 4: // SPEEDWALL
+                      forceh = (hs*1.15);
+                      break;
+                  }
                   // Player hits top side of
                   this.post.y = -1+inst.side_u-this.msk.hlfh;
                 }else{
@@ -484,7 +507,6 @@ class AbstractEntity {
                 this.msk.update(ox, oy);
                 // HORIZONTAL
                 this.vel.h = 0;
-                hs = 0;
                 this.onwall = true;
                 switch(type){
                   case 2: // STICKYWALL
@@ -492,9 +514,10 @@ class AbstractEntity {
                     this.stamina_charge();
                     break;
                   case 3: // BOUNCYWALL
-                    forceh = (hs*-1.1);
+                    forceh = (hs*-1.5);
                     break;
                 }
+                hs = 0;
                 if(dirx == 1){
                   
                   // Player hits left side of
@@ -516,13 +539,20 @@ class AbstractEntity {
     
     // Update Position
     // add force to velocity
-    this.post.x += this.vel.h*this.spd;
-    this.post.y += this.vel.v*this.spd;
+    if(forceh != 0)this.vel.h = forceh;
+    var vx = (this.vel.h*this.spd);
+    if(forcev != 0)this.vel.v = forcev;
+    var vy = (this.vel.v*this.spd);
+    this.post.x += vx;
+    this.post.y += vy;
     // Force
     //this.post.x += forceh;
     //this.post.y += forcev;
     this.boundcheck();
     this.msk.update(this.post.x, this.post.y);
+
+    //GAME.CAMERA.x = this.post.x - (canvas.width / 2);
+    //GAME.CAMERA.y = this.post.y - (canvas.height / 2);
   }
 
   place_meeting(inst){
@@ -587,6 +617,17 @@ class BouncyWall extends AbstractEntity {
   }
 }
 
+class SpeedWall extends AbstractEntity {
+  constructor(xx, yy){
+    super(4, xx, yy);
+    this.color = "#42A5F5";
+  }
+
+  update(){
+    // DO NOTHING
+  }
+}
+
 /*
 GAME STATES:
 0 - INITIALIZATION
@@ -602,23 +643,31 @@ var GAME = {
 
       },
   level: [
-  "          ",
-  " X      XXXXXX",
-  " X      X     ",
-  " X      X     ",
-  " XXXO   =     ",
-  " X     XX     ",
-  " XXX   XX     ",
-  " XXXX XXX= XXX",
-  " XXXX X==  XXX",
-  " XXXX     OXXX",
-  " XXXXOXXXXXXXX",
+  "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "XX      X====X   XXX              X",
+  "XX      X        XXX              X",
+  "XX      X                         X",
+  "XX XO   =                         X",
+  "XX     XX                         X",
+  "=  X   XX                         X",
+  "X XXX X===                        X",
+  "= XXX                             X",
+  "X XXX                             X",
+  "= XXXO>>>>>>>>>O                  X",
+  "X XXXXXX                          X",
+  "X      X                          X",
+  "XXXXXX X                          X",
+  "X    X X                          X",
+  "X X  X X                          X",
+  "X X  = X                          X",
+  "X X  X X                          X",
+  "X@X    X                          X",
+  "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
   ],
-  player: new AbstractEntity(0, 656, 32),
+  CAMERA: new Camera(NONE),
   render: function(){
     draw_bg();
     draw_grid();
-    GAME.player.render();
   }
 }
 
@@ -634,6 +683,7 @@ function play(){
   * Update Game.
 */
 function update(){
+  GAME.CAMERA.update();
   drawImage(imageObj.image);
   GAME.ALARM.update();
   
@@ -650,7 +700,7 @@ function update(){
 
 // Drawing
 function draw_bg(){
-  draw_rectangle(0, 0, canvas.width, canvas.height, "#000000");
+  draw_rectangle(GAME.CAMERA.x, GAME.CAMERA.y, canvas.width, canvas.height, "#000000");
 }
 
 function draw_grid(){
@@ -678,6 +728,7 @@ function level_load(plan){
         case "X": type = 1; break; // WALL
         case "=": type = 2; break; // STICKYWALL
         case "O": type = 3; break; // BOUNCYWALL
+        case ">": type = 4; break; // SPEEDWALL
       }
       if(type != NONE){
         //alert("made a wall:"+i+", "+j);
@@ -697,6 +748,7 @@ function instance_create(type, xx, yy){
     case 1: return new Wall(xx, yy);
     case 2: return new StickyWall(xx, yy);
     case 3: return new BouncyWall(xx, yy);
+    case 4: return new SpeedWall(xx, yy);
     
   }
   return undefined;
@@ -747,11 +799,11 @@ function draw_set_color(color){
 
 function draw_rectangle(x1, y1, ww, hh){
   draw_set_color("#FFF");
-  context.fillRect(x1, y1, ww, hh);
+  context.fillRect(x1-GAME.CAMERA.x, y1-GAME.CAMERA.y, ww, hh);
 }
 function draw_rectangle(x1, y1, ww, hh, color){
   draw_set_color(color);
-  context.fillRect(x1, y1, ww, hh);
+  context.fillRect(x1-GAME.CAMERA.x, y1-GAME.CAMERA.y, ww, hh);
 }
 
 var imageObj = new Image();
