@@ -314,6 +314,7 @@ class AbstractEntity {
         sz = TILE_SIZE/2;
         //GAME.player = this;
     }
+    this.home = {x: xx, y: yy};
     this.post = { x: xx, y : yy };
     this.vel = { h: 0, v : 0 };
     this.msk = new Mask(xx, yy, sz, sz);
@@ -392,6 +393,18 @@ class AbstractEntity {
     }else{
       return false;
     }
+  }
+
+  set_home(xx, yy){
+    this.home.x = xx;
+    this.home.y = yy;
+  }
+
+  reset(){
+    this.post.x = this.home.x;
+    this.post.y = this.home.y;
+    this.msk.update(this.post.x, this.post.y);
+    this.stamina = this.stamina_max;
   }
 
   // Update
@@ -642,7 +655,7 @@ var GAME = {
       this.interval = setInterval(update, 60);
 
       },
-  level: [
+  level: [[
   "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
   "XX      X====X   XXX              X",
   "XX      X        XXX              X",
@@ -663,7 +676,28 @@ var GAME = {
   "X X  X X                          X",
   "X@X    X                          X",
   "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-  ],
+  ], [
+  "XXXXXXXXXX===XXXXXXXXXXXXXXXXXXXXXX",
+  "X            X  XXXX              X",
+  "X       X    =  =XXX              X",
+  "X       X       =                 X",
+  "X  XO   =                         X",
+  "X  =   XX                         X",
+  "=      XX                         X",
+  "X     X==X                        X",
+  "=  X  =                           X",
+  "X  =                              X",
+  "=     =                           X",
+  "X   X                             X",
+  "X   =  X                          X",
+  "X      X                          X",
+  "X      =                          X",
+  "X                                 X",
+  "X       =                          X",
+  "X   =                             X",
+  "X@                                X",
+  "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  ]],
   CAMERA: new Camera(NONE),
   render: function(){
     draw_bg();
@@ -689,7 +723,7 @@ function update(){
   
   switch(STATE){
     case 0: // INITIALIZATION
-      level_load(GAME.level);
+      level_load(GAME.level[1]);
       STATE = 1;
       break;
     case 1:
@@ -716,6 +750,11 @@ function draw_grid(){
   }
 }
 
+function level_switch(levelID){
+  level_trash();
+  GAME.ALARM.add(level_load, 1, levelID);
+}
+
 function level_load(plan){
   var planw = plan.length;
   var planh = plan[0].length;
@@ -740,6 +779,10 @@ function level_load(plan){
       }
     }
   }
+}
+
+function level_trash(){
+  GAME.INSTANCES = [NONE, NONE];
 }
 
 function instance_create(type, xx, yy){
@@ -877,7 +920,12 @@ resize();
   TODO:
   - New Entity Types [
     X- StickyWall (Recharges Stamina, Prevents Sliding)
-    - BouncyWall (Bounces Player)
+    X- BouncyWall (Bounces Player)
+    - Follower (Follows Player)
+    - DangerWall (Triggers Death of Player)
+    - Checkpoint (Sets Home of Player)
+    - StaminaOrb (Refills Player Stamina)
+    - FragilePlatform (Will Fade Away when Player makes contact)
+    - Orb (Player Currency)
   ]
 */
-
