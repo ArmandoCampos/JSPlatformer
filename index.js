@@ -403,6 +403,8 @@ class AbstractEntity {
   reset(){
     this.post.x = this.home.x;
     this.post.y = this.home.y;
+    this.vel.x = 0;
+    this.vel.y = 0;
     this.msk.update(this.post.x, this.post.y);
     this.stamina = this.stamina_max;
   }
@@ -471,6 +473,9 @@ class AbstractEntity {
           case 2: // StickyWall
           case 3: // BouncyWall
           case 4: // SpeedWall
+          case 5: // SlickWall
+          case 6: // DangerWall
+          case 7: // CheckPoint
             var ix = inst.post.x, iy = inst.post.y;
             var disx = Math.abs(ix - this.post.x);
             var dirx = sign(ix - this.post.x);
@@ -478,19 +483,29 @@ class AbstractEntity {
 
             var disy = Math.abs(iy - this.post.y);
             var diry = sign(iy - this.post.y);
+            var affect = true;
+            switch(type){
+              case 7: affect = false; break;
+            }
             // Within Range
             if((disx <= TILE_SIZE*2)&&(disy <= TILE_SIZE*2)){
               // VERTICAL
               this.msk.update(ox, ny);
               if(this.place_meeting(inst)){
                 this.msk.update(ox, oy);
-                this.vel.v = 0;
+                if(affect)this.vel.v = 0;
                 switch(type){
                   case 3: // BOUNCYWALL
                     forcev = (vs*-1.5);
                     break;
+                  case 6: // DANGERWALL
+                    this.reset();
+                    break;
+                  case 7:
+                    this.set_home(inst.post.x, inst.post.y);
+                    break;
                 }
-                vs = 0;
+                if(affect)vs = 0;
                 if(diry == 1){
                   this.onground = true;
                   switch(type){
@@ -499,7 +514,7 @@ class AbstractEntity {
                       break;
                   }
                   // Player hits top side of
-                  this.post.y = -1+inst.side_u-this.msk.hlfh;
+                  if(affect)this.post.y = -1+inst.side_u-this.msk.hlfh;
                 }else{
                   this.onwallB = true;
                   switch(type){
@@ -509,18 +524,22 @@ class AbstractEntity {
                       break;
                   }
                   // Player hits bottom side of
-                  this.post.y = 1+inst.side_d+this.msk.hlfh;
+                  if(affect)this.post.y = 1+inst.side_d+this.msk.hlfh;
                 }
-                ny = this.post.y;
-                this.msk.update(nx, oy);
+                if(affect){
+                  ny = this.post.y;
+                  this.msk.update(nx, oy);
+                }
               }
 
               this.msk.update(nx, oy);
               if(this.place_meeting(inst)){
                 this.msk.update(ox, oy);
                 // HORIZONTAL
-                this.vel.h = 0;
-                this.onwall = true;
+                if(affect){
+                  this.vel.h = 0;
+                  this.onwall = true;
+                }
                 switch(type){
                   case 2: // STICKYWALL
                     this.cling = true;
@@ -529,19 +548,29 @@ class AbstractEntity {
                   case 3: // BOUNCYWALL
                     forceh = (hs*-1.5);
                     break;
+                  case 5: // SLICKWALL
+                    this.onwall = false;
+                    break;
+                  case 6: // DANGERWALL
+                    this.reset();
+                    break;
+                  case 7: // CHECKPOINT
+                    this.set_home(inst.post.x, inst.post.y);
+                    break;
                 }
-                hs = 0;
+                if(affect)hs = 0;
                 if(dirx == 1){
                   
                   // Player hits left side of
-                  this.post.x = -1+inst.side_l-this.msk.hlfw;
+                  if(affect)this.post.x = -1+inst.side_l-this.msk.hlfw;
                 }else{
                   // Player hits right side of
-                  this.post.x = 1+inst.side_r+this.msk.hlfw;
+                  if(affect)this.post.x = 1+inst.side_r+this.msk.hlfw;
                 }
-                nx = this.post.x;
-                this.msk.update(nx, ny);
-                
+                if(affect){
+                  nx = this.post.x;
+                  this.msk.update(nx, ny);
+                }
                 //this.vel.h = hs;
                 colh = true;
               }
@@ -641,6 +670,39 @@ class SpeedWall extends AbstractEntity {
   }
 }
 
+class SlickWall extends AbstractEntity {
+  constructor(xx, yy){
+    super(5, xx, yy);
+    this.color = "#616161";
+  }
+
+  update(){
+    // DO NOTHING
+  }
+}
+
+class DangerWall extends AbstractEntity {
+  constructor(xx, yy){
+    super(6, xx, yy);
+    this.color = "#EF6C00";
+  }
+
+  update(){
+    // DO NOTHING
+  }
+}
+
+class CheckPoint extends AbstractEntity {
+  constructor(xx, yy){
+    super(7, xx, yy);
+    this.color = "#00C853";
+  }
+
+  update(){
+    // DO NOTHING
+  }
+}
+
 /*
 GAME STATES:
 0 - INITIALIZATION
@@ -677,26 +739,26 @@ var GAME = {
   "X@X    X                          X",
   "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
   ], [
-  "XXXXXXXXXX===XXXXXXXXXXXXXXXXXXXXXX",
-  "X            X  XXXX              X",
-  "X       X    =  =XXX              X",
-  "X       X       =                 X",
-  "X  XO   =                         X",
-  "X  =   XX                         X",
-  "=      XX                         X",
-  "X     X==X                        X",
-  "=  X  =                           X",
-  "X  =                              X",
-  "=     =                           X",
-  "X   X                             X",
-  "X   =  X                          X",
-  "X      X                          X",
-  "X      =                          X",
-  "X                                 X",
-  "X       =                          X",
-  "X   =                             X",
-  "X@                                X",
-  "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "XXXXXX=======XXXXXXXXXXXX=====XXXXX",
+  "X             |  XXX  X           X",
+  "X      |  |   |  XXX  X     X     X",
+  "X      |  |   |       X*   *X     X",
+  "X      |  |   |       X*   *X=====X",
+  "X  =O  |  |   |       X           X",
+  "=      |  |   |       XXXOXXXX*  *X",
+  "X     *|**|* *|              X    X",
+  "=  X  =   |   |              X    X",
+  "X  =      |   |              X    X",
+  "=   ~ =   |   |  ~             OO X",
+  "|   X     |      X           XXXXXX",
+  "|   =  X  |      X                X",
+  "*      X  |      X                X",
+  "*      =  |      X     O          X",
+  "*         |      |                X",
+  "*       = |      |                X",
+  "|   =     |  O   |                X",
+  "|@        |      |                X",
+  "XXXXXXXXXXX******X*XXXXXXXXXXXXXX*X",
   ]],
   CAMERA: new Camera(NONE),
   render: function(){
@@ -768,6 +830,9 @@ function level_load(plan){
         case "=": type = 2; break; // STICKYWALL
         case "O": type = 3; break; // BOUNCYWALL
         case ">": type = 4; break; // SPEEDWALL
+        case "|": type = 5; break; // SLICKWALL
+        case "*": type = 6; break; // DANGERWALL
+        case "~": type = 7; break; // DANGERWALL
       }
       if(type != NONE){
         //alert("made a wall:"+i+", "+j);
@@ -792,7 +857,9 @@ function instance_create(type, xx, yy){
     case 2: return new StickyWall(xx, yy);
     case 3: return new BouncyWall(xx, yy);
     case 4: return new SpeedWall(xx, yy);
-    
+    case 5: return new SlickWall(xx, yy);
+    case 6: return new DangerWall(xx, yy);
+    case 7: return new CheckPoint(xx, yy);
   }
   return undefined;
 }
@@ -921,6 +988,7 @@ resize();
   - New Entity Types [
     X- StickyWall (Recharges Stamina, Prevents Sliding)
     X- BouncyWall (Bounces Player)
+    X- SlickWall (Cannot be clung to by Player)
     - Follower (Follows Player)
     - DangerWall (Triggers Death of Player)
     - Checkpoint (Sets Home of Player)
