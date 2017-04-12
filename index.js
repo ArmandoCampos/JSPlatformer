@@ -18,6 +18,10 @@ var Key = {
   UP: 38,
   RIGHT: 39,
   DOWN: 40,
+  A: 65,
+  D: 68,
+  S: 83,
+  W: 87,
   
   isDown: function(keyCode) {
     return this._pressed[keyCode];
@@ -329,7 +333,7 @@ class AbstractEntity {
     // Player
     this.stamina_max = 6;
     this.stamina = this.stamina_max;
-
+    this.input_set(1);
   }
   // Get
   get side_l(){
@@ -407,14 +411,22 @@ class AbstractEntity {
     this.vel.y = 0;
     this.msk.update(this.post.x, this.post.y);
     this.stamina = this.stamina_max;
+    //instance_create(9, this.post.x, this.post.y);
+  }
+
+  input_set(inpID){
+    this.input = [Key.RIGHT, Key.LEFT, Key.DOWN, Key.UP];
+    if(inpID == 1){
+      this.input = [Key.D, Key.A, Key.D, Key.W];
+    }
   }
 
   // Update
   update(){
     // Physics
     this.gravity();
-    var ir = Key.isDown(Key.RIGHT), il = Key.isDown(Key.LEFT);
-    var id = Key.isDown(Key.DOWN), iu = Key.isPressed(Key.UP);
+    var ir = Key.isDown(this.input[0]), il = Key.isDown(this.input[1]);
+    var id = Key.isDown(this.input[2]), iu = Key.isPressed(this.input[3]);
     var hdir = bool_sub(ir, il), vdir = bool_sub(id, iu);
     if(hdir != 0){
       this.hface = hdir;
@@ -469,6 +481,7 @@ class AbstractEntity {
         var type = inst.type;
         // Collision
         switch(type){
+          case 0: // Players
           case 1: // Wall
           case 2: // StickyWall
           case 3: // BouncyWall
@@ -485,6 +498,7 @@ class AbstractEntity {
             var diry = sign(iy - this.post.y);
             var affect = true;
             switch(type){
+              case 0:
               case 7: affect = false; break;
             }
             // Within Range
@@ -511,6 +525,9 @@ class AbstractEntity {
                   switch(type){
                     case 4: // SPEEDWALL
                       forceh = (hs*1.15);
+                      break;
+                    case 0: // PLAYERS
+                      inst.reset();
                       break;
                   }
                   // Player hits top side of
@@ -623,6 +640,29 @@ class AbstractEntity {
   render(){
     this.update();
     this.draw();
+  }
+}
+
+class PlayerOne extends AbstractEntity {
+  constructor(xx, yy){
+    super(0, xx, yy);
+    this.input_set(0);
+  }
+}
+
+class PlayerTwo extends AbstractEntity {
+  constructor(xx, yy){
+    super(0, xx, yy);
+    this.input_set(1);
+    this.color = "#00BCD4";
+  }
+}
+
+class Particle extends AbstractEntity {
+  constructor(xx, yy){
+    super(0, xx, yy);
+    this.input_set(2);
+    this.color = "#FFFFFF";
   }
 }
 
@@ -757,8 +797,29 @@ var GAME = {
   "*         |      |                X",
   "*       = |      |                X",
   "|   =     |  O   |                X",
-  "|@        |      |                X",
+  "|@       %|      |                X",
   "XXXXXXXXXXX******X*XXXXXXXXXXXXXX*X",
+  ], [
+  "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "X     |                      |    X",
+  "X     |                      |    X",
+  "X     |                      |    X",
+  "X     |                      |    X",
+  "X     | %                  @ |    X",
+  "X     |XXX      ====      XXX|    X",
+  "O                                 O",
+  "O                                 O",
+  "O            XOO=  =OOX           O",
+  "O         =              =        O",
+  "X                                 X",
+  "X      OXXXXXXXXXOOXXXXXXXXXO     X",
+  "X                                 X",
+  "X                                 X",
+  "X                                 X",
+  "X                                 X",
+  "X                                 X",
+  "X                                 X",
+  "X*OOO*************************OOO*X",
   ]],
   CAMERA: new Camera(NONE),
   render: function(){
@@ -785,7 +846,7 @@ function update(){
   
   switch(STATE){
     case 0: // INITIALIZATION
-      level_load(GAME.level[1]);
+      level_load(GAME.level[2]);
       STATE = 1;
       break;
     case 1:
@@ -825,14 +886,15 @@ function level_load(plan){
       var type = NONE;
       var spot = plan[i].substring(j, j+1);
       switch(spot){
-        case "@": type = 0; break; // PLAYER
-        case "X": type = 1; break; // WALL
-        case "=": type = 2; break; // STICKYWALL
-        case "O": type = 3; break; // BOUNCYWALL
-        case ">": type = 4; break; // SPEEDWALL
-        case "|": type = 5; break; // SLICKWALL
-        case "*": type = 6; break; // DANGERWALL
-        case "~": type = 7; break; // DANGERWALL
+        case "@": type = 0; break; // PLAYER1
+        case "%": type = 1; break; // PLAYER2
+        case "X": type = 2; break; // WALL
+        case "=": type = 3; break; // STICKYWALL
+        case "O": type = 4; break; // BOUNCYWALL
+        case ">": type = 5; break; // SPEEDWALL
+        case "|": type = 6; break; // SLICKWALL
+        case "*": type = 7; break; // DANGERWALL
+        case "~": type = 8; break; // DANGERWALL
       }
       if(type != NONE){
         //alert("made a wall:"+i+", "+j);
@@ -852,14 +914,16 @@ function level_trash(){
 
 function instance_create(type, xx, yy){
   switch(type){
-    case 0: return new AbstractEntity(0, xx, yy);
-    case 1: return new Wall(xx, yy);
-    case 2: return new StickyWall(xx, yy);
-    case 3: return new BouncyWall(xx, yy);
-    case 4: return new SpeedWall(xx, yy);
-    case 5: return new SlickWall(xx, yy);
-    case 6: return new DangerWall(xx, yy);
-    case 7: return new CheckPoint(xx, yy);
+    case 0: return new PlayerOne(xx, yy);
+    case 1: return new PlayerTwo(xx, yy);
+    case 2: return new Wall(xx, yy);
+    case 3: return new StickyWall(xx, yy);
+    case 4: return new BouncyWall(xx, yy);
+    case 5: return new SpeedWall(xx, yy);
+    case 6: return new SlickWall(xx, yy);
+    case 7: return new DangerWall(xx, yy);
+    case 8: return new CheckPoint(xx, yy);
+    case 9: return new Particle(xx, yy);
   }
   return undefined;
 }
