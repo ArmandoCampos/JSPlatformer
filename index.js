@@ -165,7 +165,6 @@ function array_write2D(array){
   return str;
 }
 
-
 /**
   * Alarms, used for delayed events.
 */
@@ -331,9 +330,10 @@ class AbstractEntity {
     this.onwallB = false;
     this.cling = false;
     // Player
-    this.stamina_max = 6;
+    this.stamina_max = 8;
     this.stamina = this.stamina_max;
     this.input_set(1);
+    this.score = 0;
   }
   // Get
   get side_l(){
@@ -373,7 +373,7 @@ class AbstractEntity {
       }
     }
     this.vel.v += weight;
-    if(this.vel.v >= 8)this.vel.v = 8;
+    if(this.vel.v >= 9)this.vel.v = 9;
   }
 
   boundcheck(){
@@ -385,7 +385,7 @@ class AbstractEntity {
   }
 
   stamina_charge(){
-    this.stamina += 0.2;
+    this.stamina += 0.5;
     if(this.stamina > this.stamina_max)this.stamina = this.stamina_max;
   }
 
@@ -510,7 +510,8 @@ class AbstractEntity {
                 if(affect)this.vel.v = 0;
                 switch(type){
                   case 3: // BOUNCYWALL
-                    forcev = (vs*-1.5);
+                    if(Math.abs(vs) < 4)vs *= Math.sign(vs)*4;
+                    forcev = (vs*-2);
                     break;
                   case 6: // DANGERWALL
                     this.reset();
@@ -524,10 +525,12 @@ class AbstractEntity {
                   this.onground = true;
                   switch(type){
                     case 4: // SPEEDWALL
-                      forceh = (hs*1.15);
+                      forceh = (hs*1.4);
                       break;
                     case 0: // PLAYERS
+                    forcev = (vs*-2);
                       inst.reset();
+                      this.score++;
                       break;
                   }
                   // Player hits top side of
@@ -629,8 +632,9 @@ class AbstractEntity {
     if(this.type == 0){
       GAME.ctx.font = "48px Arial";
       GAME.ctx.textAlign = "center";
+      GAME.ctx.fillStyle = "lightyellow";
+      GAME.ctx.fillText(String(this.score), this.post.x, this.post.y-(this.msk.hh*2));
       GAME.ctx.fillStyle = "lightgreen";
-      //GAME.ctx.fillText("STAMINA:"+String(Math.floor(this.stamina)), this.post.x, this.post.y-this.msk.hh);
       draw_rectangle(ll, uu-32, this.msk.ww, 16, "#424242");
       draw_rectangle(ll, uu-32, (this.stamina / this.stamina_max)*this.msk.ww, 16, "lightgreen");
     }
@@ -779,47 +783,47 @@ var GAME = {
   "X@X    X                          X",
   "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
   ], [
-  "XXXXXX=======XXXXXXXXXXXX=====XXXXX",
-  "X             |  XXX  X           X",
-  "X      |  |   |  XXX  X     X     X",
-  "X      |  |   |       X*   *X     X",
-  "X      |  |   |       X*   *X=====X",
-  "X  =O  |  |   |       X           X",
-  "=      |  |   |       XXXOXXXX*  *X",
-  "X     *|**|* *|              X    X",
-  "=  X  =   |   |              X    X",
-  "X  =      |   |              X    X",
-  "=   ~ =   |   |  ~             OO X",
-  "|   X     |      X           XXXXXX",
-  "|   =  X  |      X                X",
-  "*      X  |      X                X",
-  "*      =  |      X     O          X",
-  "*         |      |                X",
-  "*       = |      |                X",
-  "|   =     |  O   |                X",
-  "|@       %|      |                X",
-  "XXXXXXXXXXX******X*XXXXXXXXXXXXXX*X",
+  "XXXXXX=======XXXXX XXXXXX=====XXXXX",
+  "X             |  X X              X",
+  "X      X  |   |                   X",
+  "X      X  |   =        *   *      X",
+  "X      X  |   =        *   * =====X",
+  "X  =O  X  |   =                   X",
+  "=      X  |   X       XX O XX *  *X",
+  "X      X**|* *X       =           X",
+  "=  X   ===|   X       =           X",
+  "X  =      X   X                   X",
+  "=     =   X   =                OO X",
+  "|   X     X      X           XXOOXX",
+  "|   =  X  X      X                X",
+  "*      X               O          X",
+  "*      =  X           O*O         X",
+  "*O        X            O          =",
+  "*       = X      X                X",
+  "|   =        O   X                X",
+  " @       %   X              OOO    ",
+  "XX>>>>O>>XXOXXXO>X X>>>>>>>>OOOOOXXX",
   ], [
   "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
   "X     |                      |    X",
   "X     |                      |    X",
   "X     |                      |    X",
-  "X     |                      |    X",
-  "X     | %                  @ |    X",
-  "X     |XXX      ====      XXX|    X",
+  "X     O                      O    X",
+  "XXXXXX| %                  @ |XXXXX",
+  "X     =XXX      ====      XXX=    X",
   "O                                 O",
   "O                                 O",
   "O            XOO=  =OOX           O",
   "O         =              =        O",
   "X                                 X",
   "X      OXXXXXXXXXOOXXXXXXXXXO     X",
+  "X        ==================       X",
   "X                                 X",
   "X                                 X",
   "X                                 X",
+  "X       X                  X      X",
   "X                                 X",
-  "X                                 X",
-  "X                                 X",
-  "X*OOO*************************OOO*X",
+  "X*OOO*********OOOOOOO*********OOO*X",
   ]],
   CAMERA: new Camera(NONE),
   render: function(){
@@ -846,7 +850,7 @@ function update(){
   
   switch(STATE){
     case 0: // INITIALIZATION
-      level_load(GAME.level[2]);
+      level_load(GAME.level[1]);
       STATE = 1;
       break;
     case 1:
@@ -1054,8 +1058,8 @@ resize();
     X- BouncyWall (Bounces Player)
     X- SlickWall (Cannot be clung to by Player)
     - Follower (Follows Player)
-    - DangerWall (Triggers Death of Player)
-    - Checkpoint (Sets Home of Player)
+    X- DangerWall (Triggers Death of Player)
+    X- Checkpoint (Sets Home of Player)
     - StaminaOrb (Refills Player Stamina)
     - FragilePlatform (Will Fade Away when Player makes contact)
     - Orb (Player Currency)
