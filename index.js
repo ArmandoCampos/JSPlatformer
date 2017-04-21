@@ -613,8 +613,8 @@ class AbstractEntity {
     this.boundcheck();
     this.msk.update(this.post.x, this.post.y);
 
-    //GAME.CAMERA.x = this.post.x - (canvas.width / 2);
-    //GAME.CAMERA.y = this.post.y - (canvas.height / 2);
+    GAME.CAMERA.x = Math.floor(this.post.x) - (canvas.width / 2);
+    GAME.CAMERA.y = Math.floor(this.post.y) - (canvas.height / 2);
   }
 
   place_meeting(inst){
@@ -977,7 +977,7 @@ function draw_set_color(color){
 
 function draw_rectangle(x1, y1, ww, hh){
   draw_set_color("#FFF");
-  context.fillRect(x1-GAME.CAMERA.x, y1-GAME.CAMERA.y, ww, hh);
+  context.fillRect(Math.floor(x1-GAME.CAMERA.x), Math.floor(y1-GAME.CAMERA.y), ww, hh);
 }
 function draw_rectangle(x1, y1, ww, hh, color){
   draw_set_color(color);
