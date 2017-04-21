@@ -850,7 +850,7 @@ function update(){
   
   switch(STATE){
     case 0: // INITIALIZATION
-      level_load(GAME.level[1]);
+      level_load(GAME.level[2]);
       STATE = 1;
       break;
     case 1:
