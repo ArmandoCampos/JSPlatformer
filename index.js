@@ -302,8 +302,8 @@ class Camera {
   update(){
     if(this.follow != NONE){
       // Follow Abstract Entity
-      this.x = this.follow.x;
-      this.y = this.follow.y;
+      this.x = 0;//this.follow.x;
+      this.y = 0;//this.follow.y;
     }
   }
 }
@@ -850,7 +850,7 @@ function update(){
   
   switch(STATE){
     case 0: // INITIALIZATION
-      level_load(GAME.level[2]);
+      level_load(GAME.level[1]);
       STATE = 1;
       break;
     case 1:
@@ -879,7 +879,7 @@ function draw_grid(){
 
 function level_switch(levelID){
   level_trash();
-  GAME.ALARM.add(level_load, 1, levelID);
+  GAME.ALARM.add(level_load, 0, levelID);
 }
 
 function level_load(plan){
